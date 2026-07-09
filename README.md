@@ -1,5 +1,7 @@
 # 网页划线对话 · 小虾 🦐
 
+> 📦 仓库地址：https://github.com/NoahEleven/webchat-extension
+
 一个 **Chrome / Edge / 千问 / 夸克 等 Chromium 内核浏览器** 扩展：在任意网页上**选中或复制文字**，点一下工具栏图标，就能带着这段网页上下文，直接和 AI 对话、流式得到回答。
 
 > 本质：复用 CodeBuddy Agent SDK 的 **Express + SSE 后端**，前端换成「浏览器扩展 + 网页划线交互」。
