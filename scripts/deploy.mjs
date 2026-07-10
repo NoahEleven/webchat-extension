@@ -157,6 +157,7 @@ console.log(`\n📦 部署「网页划线对话」→ ${target}\n`);
 const extSrc = join(ASSETS, "extension");
 const beSrc = join(ASSETS, "backend");
 const rootSrc = join(ASSETS, "root");
+const skillRoot = resolve(__dirname, ".."); // webchat-extension/（含 pack.mjs 等发布工具）
 if (!fs.existsSync(extSrc) || !fs.existsSync(beSrc)) {
   console.error("✗ 找不到 skill 内的 assets/extension 或 assets/backend，请确认技能目录完整。");
   process.exit(1);
@@ -168,6 +169,15 @@ console.log("✓ 已复制 extension/ 与 backend/（不含真实 .env 密钥）
 if (fs.existsSync(rootSrc)) {
   copyDir(rootSrc, target); // README.md（.gitignore / 协议模板不随分享包分发）
   console.log("✓ 已复制根文档（README.md）");
+}
+
+// 复制发布工具（根 pack.mjs / gen-icons.mjs）到 target，使其可一键生成分享包
+for (const tool of ["pack.mjs", "gen-icons.mjs"]) {
+  const src = join(skillRoot, tool);
+  if (fs.existsSync(src)) {
+    fs.copyFileSync(src, join(target, tool));
+    console.log(`✓ 已复制发布工具 ${tool}（可在 target 下 node ${tool} 生成分享包 / 图标）`);
+  }
 }
 
 // 若目标没有 .env，提示用户从 .env.example 复制
@@ -220,9 +230,12 @@ if (noInstall) {
   console.log("\n⏭️ 跳过 npm install（--no-install）。需要时用：cd backend && npm install");
 } else {
   console.log("\n⏳ 安装后端依赖（npm install，可能需几十秒）…");
-  const r = spawnSync("npm", ["install"], {
+  // Windows 上 npm 是 npm.cmd，spawnSync 默认不解析 .cmd，需 shell:true（或显式 npm.cmd）
+  const npmBin = process.platform === "win32" ? "npm.cmd" : "npm";
+  const r = spawnSync(npmBin, ["install"], {
     cwd: join(target, "backend"),
     stdio: "inherit",
+    shell: process.platform === "win32",
   });
   if (r.status !== 0) {
     console.error("\n✗ npm install 失败，请手动在 backend/ 运行 npm install 后重试启动。");
