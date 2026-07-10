@@ -20,7 +20,7 @@ webchat-extension/
 │   ├── background.js              # service worker：图标点击→开关浮层；心跳 ping 后端
 │   ├── content.js                 # 注入网页：开/关浮层、读选区、状态持久化、触发协议
 │   ├── panel.html / panel.js / panel.css   # 对话浮层界面与逻辑
-│   └── icons/                     # 品牌图标 icon16/32/48/128.png
+│   └── icons/                     # 图标 icon16/32/48/128.png（分享包不含，由 deploy/gen-icons 自动生成）
 └── backend/                       # AI 后端（Express + CodeBuddy SDK + SSE）
     ├── server.js                  # /api/chat(SSE) /api/health /api/heartbeat /api/stop
     ├── launcher.mjs               # 协议触发：托管模式静默拉起 server.js
@@ -80,6 +80,7 @@ npm start                   # 默认监听 http://localhost:3000
 
 1. 浏览器进入 **扩展管理页 → 开启「开发者模式」**（`chrome://extensions` 或 `edge://extensions` 等）
 2. 点 **「加载已解压的扩展程序」**，目录选本项目的 `extension/`
+   - ⚠️ **分享包不含图标 png**：加载前请先生成图标——已跑过 `node scripts/deploy.mjs` 会自动生成；手动加载则先跑 `node gen-icons.mjs`。否则报 `Could not load icon` 加载失败。
 3. 加载成功后，图标出现在扩展栏
 4. **改了扩展代码后**，回扩展管理页点「重新加载」才能生效
 
@@ -132,8 +133,8 @@ npm start                   # 默认监听 http://localhost:3000
 - **⚠️ 收件人还需自备 codebuddy CLI**：本项目不随包分发该 CLI（见「前置依赖」一节）。对方机器若没有 WorkBuddy，需 `npm i -g @tencent-ai/codebuddy-code` 并确保在 `PATH` 上，否则只能演示模式。
 - **正式广分发**：上架 Chrome / Edge 应用商店，发商店链接。
 - **打包清单**
-  - ✅ 带：`SKILL.md`（技能入口，根目录）、`extension/`（含 `icons/`）、`backend/` 源码（`server.js` `launcher.mjs` `patch-sdk.mjs` `package.json` `package-lock.json` `.env.example`）、`scripts/`（部署脚手架，含内联生成 launcher.vbs）、`references/`（排错表）、`assets/`（技能资源）、`README.md`
-  - ❌ 不带：`backend/node_modules/`（让收件人 `npm install` 即可）、`backend/.env`（含真实 Key）、`extension.pem`/`extension.crx`、`*.log`、`*.cjs` 测试草稿、**`launcher.vbs` / `webchat-protocol.reg.example` / `.gitignore`（不随分享包分发；launcher.vbs 由部署脚本自动生成、协议由部署自动注册）**
+  - ✅ 带：`SKILL.md`（技能入口，根目录）、`extension/`（**不含 icons png，加载前由 deploy / gen-icons 自动生成**）、`backend/` 源码（`server.js` `launcher.mjs` `patch-sdk.mjs` `package.json` `package-lock.json` `.env.example`）、`scripts/`（部署脚手架，含内联生成 launcher.vbs + 图标生成）、`references/`（排错表）、`assets/`（技能资源）、`README.md`、`gen-icons.mjs`
+  - ❌ 不带：`backend/node_modules/`（让收件人 `npm install` 即可）、`backend/.env`（含真实 Key）、`extension.pem`/`extension.crx`、**`*.png`（图标不进包，由 agent 部署时生成）**、`*.log`、`*.cjs` 测试草稿、**`launcher.vbs` / `webchat-protocol.reg.example` / `.gitignore`（不随分享包分发；launcher.vbs 由部署脚本自动生成、协议由部署自动注册）**
   - 这些由打包脚本按 `.gitignore` + 硬性禁止列表排除，打包前确认没混进去。
 
 ---
