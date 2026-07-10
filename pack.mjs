@@ -71,15 +71,22 @@ function isSkillSensitive(relPath) {
 }
 
 // 一律禁止进入分享包的文件（独立于 .gitignore，显式硬性排除）
+// 图标（*.png）不进包：extension/icons 由 agent 在部署时（deploy.mjs / gen-icons.mjs）自动生成，
+// 既减小体积又避免二进制 png 进分享包。
 const FORBIDDEN = [
   '.gitignore',                  // 内部版本控制配置，非分享产物
-  'launcher.vbs',                // 本地启动器，收件人用 npm start 即可
+  'launcher.vbs',                // 本地启动器，收件人用 npm start 即可（由 deploy.mjs 部署时内联生成）
   '.launcher.vbs',               // 兼容可能的笔误命名
   'webchat-protocol.reg.example', // 协议注册表模板，改用 README 指引手动创建
+  'extension.crx',               // 打包扩展二进制：浏览器禁本地安装 + 分享不需要
+  'extension.pem',               // 签名私钥：绝不可进共享包（安全 + 体积）
+  '_meta.json',                  // 安装元数据，非源
+  '_skillhub_meta.json',
 ];
 function isForbidden(relPath) {
   const norm = relPath.replace(/\\/g, '/');
   const base = norm.split('/').pop();
+  if (base.toLowerCase().endsWith('.png')) return true;   // 图标由 agent 部署时生成，不进包
   return FORBIDDEN.includes(base) || FORBIDDEN.includes(norm);
 }
 
@@ -104,8 +111,8 @@ function walk(dir, rel, sensitive) {
   }
 }
 
-// 1) 项目本体（手动安装版）
-walk(ROOT, '');
+// 1) 项目本体（手动安装版）—— 同样套用敏感过滤，根目录残留的 .env/.pem 也会被排除
+walk(ROOT, '', isSkillSensitive);
 
 // 2) agent 技能版（可选）：默认 ~/.workbuddy/skills/webchat-extension，可用 SKILL_DIR 覆盖
 //    扁平化进归档根：SKILL.md 直接落在 webchat-extension/ 下（根目录），
