@@ -13,12 +13,19 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// 与 server.js / panel.js 保持一致的端口（优先读 .env 的 PORT）
+// 应用端口（用于探测后端是否已在线），默认 3000
 let PORT = 3000;
+// CLI prewarm 端口（由 SERVER__PORT 控制，避开 WorkBuddy 桌面占用的端口冲突）。
+// null 表示「用户没在 .env 显式设置」→ 不注入，让 server.js 自己分配空闲端口；
+// 非 null 表示用户显式设置了 → 显式注入，覆盖本机可能存在的系统级 SERVER__PORT，
+// 否则 dotenv 不覆盖已存在环境变量，CLI prewarm 会撞上被占用的端口导致卡死。
+let SERVER_PORT = null;
 try {
   const txt = fs.readFileSync(path.join(__dirname, ".env"), "utf8");
-  const m = txt.match(/^\s*PORT\s*=\s*(\d+)/m);
-  if (m) PORT = parseInt(m[1], 10);
+  const mP = txt.match(/^\s*PORT\s*=\s*(\d+)/m);
+  if (mP) PORT = parseInt(mP[1], 10);
+  const mS = txt.match(/^\s*SERVER__PORT\s*=\s*(\d+)/m);
+  if (mS) SERVER_PORT = parseInt(mS[1], 10);
 } catch (_) {}
 
 function probe() {
@@ -47,12 +54,16 @@ if (already) {
 }
 
 // 拉起 server.js：托管模式（靠扩展心跳续命），detached 脱离启动器独立运行
+// 仅当用户在 .env 显式设了 SERVER__PORT 时才注入，用于覆盖系统级 SERVER__PORT，
+// 避免 CLI prewarm 撞上 WorkBuddy 桌面已占用的端口而 EADDRINUSE 卡死。
+const childEnv = { ...process.env, WEBCHAT_MANAGED: "1" };
+if (SERVER_PORT !== null) childEnv.SERVER__PORT = String(SERVER_PORT);
 const child = spawn(process.execPath, ["server.js"], {
   cwd: __dirname,
   detached: true,
   stdio: "ignore",
   windowsHide: true,
-  env: { ...process.env, WEBCHAT_MANAGED: "1" },
+  env: childEnv,
 });
 child.unref(); // 不阻止本进程退出；后端作为独立进程继续运行
 
