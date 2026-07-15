@@ -44,7 +44,7 @@ function findLauncherVbs() {
   candidates.push(
     path.join(os.homedir(), "WorkBuddy", "claudecode", "webchat-extension", "backend", "launcher.vbs")
   );
-  // 5) skill 内的 assets/backend（仅当以上都不存在时兜底，通常不会被选中）
+  // 5) skill 内的 assets/backend（兜底；注意 launcher.vbs 现已不在 assets 内——它由部署时生成，此候选通常为空）
   candidates.push(path.join(__dirname, "..", "assets", "backend", "launcher.vbs"));
 
   return candidates.filter((p) => fs.existsSync(p));
@@ -87,11 +87,12 @@ console.log("🔧 webchat:// 协议注册工具\n");
 
 const found = findLauncherVbs();
 if (found.length === 0) {
-  console.error("✗ 找不到 launcher.vbs！请确认 webchat-extension 项目已部署（或设 WEBCHAT_DIR 环境变量）。");
-  console.error("  搜索位置：");
+  console.error("✗ 找不到 launcher.vbs！launcher.vbs 由 agent 在部署时生成（不随包分发），请先生成：");
+  console.error(`   node "${path.join(__dirname, "gen-vbs.mjs")}" "${path.join(process.cwd(), "webchat-extension", "backend")}"`);
+  console.error("   （或直接重新部署：node scripts/deploy.mjs ~/webchat-extension）");
+  console.error("  搜索过：");
   console.error(`   - ${path.join(process.cwd(), "webchat-extension", "backend")}`);
   console.error(`   - ${path.join(os.homedir(), "webchat-extension", "backend")}`);
-  console.error("   → 部署：node scripts/deploy.mjs ~/webchat-extension");
   process.exit(1);
 }
 
