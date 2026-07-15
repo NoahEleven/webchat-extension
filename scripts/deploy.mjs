@@ -12,68 +12,10 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import zlib from "node:zlib";
+import { writeLauncherVbs } from "./gen-vbs.mjs"; // launcher.vbs 唯一 source of truth：部署时现生成，不随包分发
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// 内联 launcher.vbs 内容：部署时写入 target/backend，避免「launcher.vbs」随分享包分发。
-// 这样分享包更干净，而 webchat:// 协议按钮在部署后依旧可用。
-const LAUNCHER_VBS = [
-  "' webchat backend launcher - invoked by webchat:// protocol handler",
-  "' Runs launcher.mjs hidden (no console window)",
-  "On Error Resume Next",
-  "Set fso = CreateObject(\"Scripting.FileSystemObject\")",
-  "scriptPath = WScript.ScriptFullName",
-  "backendDir = fso.GetParentFolderName(scriptPath)",
-  "",
-  "' Minimal log for debugging (safe ASCII path)",
-  "Set logFile = fso.OpenTextFile(\"C:\\tmp\\webchat_vbs.log\", 8, True)",
-  "logFile.WriteLine Now & \" START backendDir=\" & backendDir",
-  "logFile.Close",
-  "",
-  "' Resolve node: try PATH first, then managed path fallback",
-  "nodeExe = \"\"",
-  "Set sh = CreateObject(\"WScript.Shell\")",
-  "Set oExec = sh.Exec(\"cmd /c where node 2>nul\")",
-  "Do While oExec.Status = 0",
-  "  WScript.Sleep 30",
-  "Loop",
-  "out = \"\"",
-  "Err.Clear",
-  "out = oExec.StdOut.ReadAll()",
-  "Set logFile = fso.OpenTextFile(\"C:\\tmp\\webchat_vbs.log\", 8, True)",
-  "logFile.WriteLine Now & \" where_result=\" & Left(out, 200) & \" err=\" & Err.Number",
-  "If Err.Number = 0 And Len(out) > 0 Then",
-  "  nodeExe = Trim(Split(out, vbCrLf)(0))",
-  "  logFile.WriteLine Now & \" resolved=\" & nodeExe",
-  "End If",
-  "",
-  "If Len(nodeExe) = 0 Then",
-  "  home = sh.ExpandEnvironmentStrings(\"%USERPROFILE%\")",
-  "  fallback = home & \"\\.workbuddy\\binaries\\node\\versions\\22.22.2\\node.exe\"",
-  "  If fso.FileExists(fallback) Then",
-  "    nodeExe = fallback",
-  "    logFile.WriteLine Now & \" fallback=\" & nodeExe",
-  "  Else",
-  "    logFile.WriteLine Now & \" fallback_NOT_FOUND\"",
-  "  End If",
-  "End If",
-  "",
-  "If Len(nodeExe) = 0 Then nodeExe = \"node\"",
-  "",
-  "' 读取协议传入的 URL（webchat://start），透传给 launcher.mjs",
-  "url = \"\"",
-  "If WScript.Arguments.Count > 0 Then url = WScript.Arguments(0)",
-  "",
-  "cmd = \"\"\"\" & nodeExe & \"\"\" \"\"\" & backendDir & \"\\launcher.mjs\"\"\" \"\"\" & url & \"\"\"\"",
-  "logFile.WriteLine Now & \" RUN cmd=\" & cmd",
-  "logFile.Close",
-  "",
-  "sh.Run cmd, 0, False",
-  "",
-  "Set logFile = fso.OpenTextFile(\"C:\\tmp\\webchat_vbs.log\", 8, True)",
-  "logFile.WriteLine Now & \" Run returned\"",
-  "logFile.Close",
-].join("\r\n");
 const SKILL_DIR = resolve(__dirname, "..");
 const ASSETS = join(SKILL_DIR, "assets");
 
@@ -166,6 +108,13 @@ copyDir(extSrc, join(target, "extension"));
 copyDir(beSrc, join(target, "backend"));
 ensureIcons(join(target, "extension")); // 兜底：确保 icons 四张齐全，避免加载失败
 console.log("✓ 已复制 extension/ 与 backend/（不含真实 .env 密钥）");
+
+// ---------- Windows：部署时由 agent 生成 launcher.vbs（不随包分发） ----------
+// 关键：这一步独立于协议注册，即使带 --no-protocol 也会生成，保证面板「🚀 启动后端」按钮可用。
+function ensureLauncherVbs() {
+  writeLauncherVbs(join(target, "backend")); // win32 才会写；非 Windows 自动跳过
+}
+ensureLauncherVbs();
 if (fs.existsSync(rootSrc)) {
   copyDir(rootSrc, target); // README.md（.gitignore / 协议模板不随分享包分发）
   console.log("✓ 已复制根文档（README.md）");
@@ -196,8 +145,7 @@ function registerProtocol() {
     return;
   }
   const vbsPath = join(target, "backend", "launcher.vbs");
-  // 内联生成 launcher.vbs（不随分享包分发；保证协议按钮在部署后可用）
-  fs.writeFileSync(vbsPath, LAUNCHER_VBS, "utf8");
+  // launcher.vbs 已由 ensureLauncherVbs()（上面的部署步骤）在 Windows 上生成；这里仅引用其路径注册协议。
   // 命令值里需要把路径与 %1 用引号包住： "wscript.exe" "launcher.vbs" "%1"
   const cmdValue = `"C:\\Windows\\System32\\wscript.exe" "${vbsPath}" "%1"`;
   const base = "HKCU\\Software\\Classes\\webchat";
