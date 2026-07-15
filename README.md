@@ -24,7 +24,7 @@ webchat-extension/
 └── backend/                       # AI 后端（Express + CodeBuddy SDK + SSE）
     ├── server.js                  # /api/chat(SSE) /api/health /api/heartbeat /api/stop
     ├── launcher.mjs               # 协议触发：托管模式静默拉起 server.js
-    ├── launcher.vbs               # 隐藏窗口启动 launcher.mjs（由部署脚本生成，不随分享包分发）
+    ├── launcher.vbs               # 隐藏窗口启动 launcher.mjs（由 agent 在部署时用 scripts/gen-vbs.mjs 生成，不随分享包分发）
     ├── patch-sdk.mjs              # postinstall 自动给 SDK 注入 windowsHide，消除 Windows 黑框
     ├── package.json / package-lock.json
     └── .env.example               # 复制为 .env 后填写（含 API Key）
@@ -90,10 +90,10 @@ npm start                   # 默认监听 http://localhost:3000
 
 面板里的「🚀 启动后端」按钮靠自定义协议 `webchat://start` 自动拉起后端，需要**先注册一次协议处理器**。
 
-- **若由 agent 按本 skill 部署（推荐）**：运行 `node scripts/deploy.mjs` 会**自动注册协议**，并自动在 `backend/` 生成 `launcher.vbs` 隐藏启动器，开箱即用，无需手动操作。
+- **若由 agent 按本 skill 部署（推荐）**：运行 `node scripts/deploy.mjs` 会**自动注册协议**，并自动在 `backend/` 生成 `launcher.vbs` 隐藏启动器，开箱即用，无需手动操作（`launcher.vbs` 是部署期产物，绝不随分享包分发/上传；缺失时可单独 `node scripts/gen-vbs.mjs <backend目录>` 生成）。
 - **手动 / 分享给别人（无 WorkBuddy）**：
   - **最省事**：跳过协议，面板点「📋 复制启动命令」→ 终端执行，或直接 `cd backend && npm start`。
-  - **想要协议按钮免终端**：手动注册（把下列命令里的路径改成你机器真实的 `backend` 路径）。注意命令指向 `launcher.mjs`，直接用 `node` 跑会有一个 cmd 窗口闪现；若要完全无黑框，可在 `backend/` 自建 `launcher.vbs`（隐藏启动 `launcher.mjs`，其内容见 `scripts/deploy.mjs` 的 `LAUNCHER_VBS` 常量），再让命令指向该 `.vbs`：
+  - **想要协议按钮免终端**：手动注册（把下列命令里的路径改成你机器真实的 `backend` 路径）。注意命令指向 `launcher.mjs`，直接用 `node` 跑会有一个 cmd 窗口闪现；若要完全无黑框，先 `node scripts/gen-vbs.mjs <backend目录>` 生成 `launcher.vbs`（唯一 source of truth 见 `scripts/gen-vbs.mjs`，隐藏启动 `launcher.mjs`），再让命令指向该 `.vbs`：
     ```bat
     reg add "HKCU\Software\Classes\webchat" /ve /t REG_SZ /d "webchat Protocol" /f
     reg add "HKCU\Software\Classes\webchat" /v "URL Protocol" /t REG_SZ /d "" /f
