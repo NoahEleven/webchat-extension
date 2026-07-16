@@ -46,7 +46,7 @@ webchat-extension/
 
 ## 部署步骤（agent 照做）
 1. **脚手架**：运行 `node <skill_dir>/scripts/deploy.mjs <targetDir>`（不加 `[targetDir]` 默认 `./webchat-extension` 或 `~/webchat-extension`）。脚本把 `assets/` 里的扩展、后端、根文档复制到目标目录并 `npm install`；**在 Windows 上，agent 会自动用 `scripts/gen-vbs.mjs` 生成 `backend/launcher.vbs`（即使带 `--no-protocol` 也会生成），并自动注册 `webchat://start` 协议**，使面板「🚀 启动后端」按钮免终端生效。`launcher.vbs` 是部署期产物，**绝不随分享包分发/上传**——若目标目录缺失它，可随时补：`node <skill_dir>/scripts/gen-vbs.mjs <target>/backend`。加 `--no-install` 只复制不装依赖；加 `--no-protocol` 跳过协议注册（但 vbs 仍会生成）。非 Windows 或需手动注册时，按 README「四、一键启动后端」用面板「📋 复制启动命令」手动 `npm start`，或参考 README/references 手动 `reg add` 注册协议。
-2. **配置后端**：在 `<target>/backend/` 复制 `.env.example` 为 `.env`，按需填 `CODEBUDDY_API_KEY`（**不填也能跑，进演示模式**验收交互）。确认 `CODEBUDDY_MODEL=hy3`（该账户不支持 `claude-sonnet-4`）。
+2. **配置后端**：在 `<target>/backend/` 复制 `.env.example` 为 `.env`，按需填 `CODEBUDDY_API_KEY`（**不填也能跑：复用本机 `codebuddy` CLI 已登录凭据走登录模式真实 AI**；只有显式设 `WEBCHAT_DEMO=1` 才进演示模式）。确认 `CODEBUDDY_MODEL=hy3`（该账户不支持 `claude-sonnet-4`）。
 3. **启动后端（后台运行）**：`cd <target>/backend && npm start`。监听 `http://localhost:3000`。改代码后重启才生效。也可用面板「🚀 启动后端」按钮（需协议已注册）。
 4. **加载扩展**：浏览器（Chrome / Edge / 千问 / 夸克 等 Chromium 内核）进入**开发者模式 → 加载已解压的扩展程序**，目录选 `<target>/extension/`。（`deploy` 已自动生成 `extension/icons` 四张图标；若手动加载项目根 `extension/`，请先跑 `node gen-icons.mjs`）改了扩展代码要回扩展管理页点「重新加载」。
 5. **验证**：访问 `http://localhost:3000/api/health` 应返回 `{"status":"ok",...}`；打开任意网页 → 点工具栏「🦐 小虾」图标 → 弹出面板 → 选中网页文字点「➕ 添加选中文本」→ 提问 → 流式回答。
@@ -59,11 +59,21 @@ node pack.mjs         # 在父目录生成 webchat-extension-share-YYYYMMDD.zip
 ```
 `pack.mjs` 自动按 `.gitignore` + 硬性黑名单排除：`node_modules/`、`.env`、私钥 `*.pem`、`extension.crx`、协议注册表模板、所有 `*.png`（图标由收件人部署时生成）。生成的 zip 即干净分享包，可直接发给他人或推送到仓库。
 
+## CodeBuddy 认证（登录 / API Key 二选一，零配置优先）
+后端 `server.js` 通过 CodeBuddy Agent SDK 调真实模型，认证方式参考 dingtalk-auto-reply 的「Key / CLI 已登录」范式：
+- **登录模式（默认，零配置）**：未配置 `CODEBUDDY_API_KEY` 时，SDK 自动复用本机 `codebuddy` CLI 已登录凭据（与你在终端 / WorkBuddy 登录的是同一套 `~/.codebuddy/local_storage`），无需任何 Key 即可走真实 AI。首次启动前请确保 `codebuddy` 已登录（终端跑一次 `codebuddy` 完成登录）。
+- **Key 模式（推荐无人值守）**：在 `backend/.env` 填 `CODEBUDDY_API_KEY=<你的key>`（申请：https://copilot.tencent.com 控制台）→ 用 Key 直连，不依赖交互登录。
+- **演示模式**：仅当显式设 `WEBCHAT_DEMO=1` 时强制进入（返回模拟回复验收交互）；否则无 Key 也走「登录模式」真实模型，**不再降级为 demo**。
+- `CODEBUDDY_INTERNET_ENVIRONMENT`：中国版自动设为 `internal`（已在 server.js 兜底），无需手动配。
+- 自检：`/api/health` 返回 `mode`（key｜login）、`demo`；`/api/auth` 用一次极短 query 实测登录态（15s 超时兜底，不卡死），失败回退到凭据目录存在性判断并给出明确修复提示。**后端绝不代填 / 存储登录凭据**——认证动作由你本人在终端完成。
+
+> ⚠️ **进程清理绝不误杀**：后端退出（`/api/stop`、空闲超时、托管心跳断、全局退出）时只清理「自己 spawn 出来的 codebuddy CLI 子进程」——按**进程树（本进程后代）+ CLI 路径精确匹配**，绝不按端口 `netstat` 乱扫（端口子串匹配会把 `45012` 误中 `450123`，且易误杀带看门狗、会被自动重拉的进程，如 dingtalk 监控）。即使某进程有看门狗会自愈，我们也连误杀都不做；另有「监听端口 + CLI 路径二次确认」兜底，确保外来进程永不被误杀。
+
 ## 关键坑（务必先读，否则部署必踩）
 - **端口冲突导致一直转圈**：官方 CLI 启动会起 prewarm 本地 server，端口由 `SERVER__PORT` 控制。若该端口被本机其他程序（**WorkBuddy 桌面应用**）占用，CLI 会 `EADDRINUSE` 卡死。解决：`.env` 设 `SERVER__PORT=40123`（空闲端口）并重启。**面板「🚀 启动后端」按钮路径**下，`launcher.mjs` 会自动从 `.env` 读取 `SERVER__PORT` 并**显式注入**子进程环境，覆盖本机可能存在的系统级 `SERVER__PORT`（dotenv 不覆盖已存在变量，故必须靠 launcher 注入）；未设置时则不注入、由 `server.js` 自动分配空闲端口。若走 `npm start` 手动启动且系统变量残留旧值，用 `SERVER__PORT=40123 npm start` 显式覆盖。
 - **模型名 400**：本账户不支持 `claude-sonnet-4`。用 `hy3` 或 `auto`。
 - **CLI 路径**：`server.js` 通过 `resolveCli()` 自动定位官方 CLI（优先级：显式 `CODEBUDDY_CLI_PATH` → PATH 上的 `codebuddy` → 受管 node 目录固定路径）。不要用 WorkBuddy 自带的那份 cli（协议不匹配会 initialize 超时）。
-- **演示 vs 真实**：没填 `CODEBUDDY_API_KEY` 时后端返回模拟回复，用来验收交互闭环；填了才是真实 AI。
+- **演示 vs 真实**：未填 `CODEBUDDY_API_KEY` 时后端走「登录模式」复用 codebuddy CLI 已登录凭据，是**真实 AI**（不是模拟回复）；只有显式设 `WEBCHAT_DEMO=1` 才进演示模式（模拟回复用来验收交互闭环）。填了 Key 则走 Key 模式，也是真实 AI。
 - **扩展不注入系统页**：`chrome://`、`edge://` 等页面扩展无法注入，点图标无反应属正常。
 - **图标由 agent 部署时生成（分享包不含任何 *.png）**：`manifest.json` 声明了 `icons/icon{16,32,48,128}.png`，加载扩展前这 4 张必须存在，否则报 `Could not load icon` 加载失败。`deploy.mjs` 复制 extension 后会**自动生成**珊瑚橙 PNG（不依赖源图标）；手动从项目根加载（不跑 deploy）时，请先跑 `node gen-icons.mjs` 生成。想换正式品牌图标，部署后替换这 4 张 png 即可。
 - **launcher.vbs 由 agent 部署时生成（绝不随包分发/上传）**：`backend/launcher.vbs` 是 Windows 隐藏启动器，用于「🚀 启动后端」按钮免终端拉起 `launcher.mjs`。它**不进分享包、不进 git**（被 `pack.mjs` 与 `.gitignore` 排除），由 agent 在部署时经 `scripts/gen-vbs.mjs` 现生成。若某次部署后按钮失效 / 报「找不到 launcher.vbs」，直接重跑 `node scripts/gen-vbs.mjs <target>/backend`（或重新 `deploy.mjs`）即可，无需手动编辑 vbs 内容。
@@ -82,7 +92,7 @@ node pack.mjs         # 在父目录生成 webchat-extension-share-YYYYMMDD.zip
 - [ ] 点图标弹出面板、可拖动不抖、不跳左上角
 - [ ] 选中文字 → 添加上下文 → 提问有流式回答
 - [ ] 刷新网页后面板自动重开、上下文/对话不丢
-- [ ] 真实 AI 模式（填了 Key）回答正常；演示模式也能跑通闭环
+- [ ] 真实 AI 模式（登录模式默认零配置 / 或填 Key）回答正常；`WEBCHAT_DEMO=1` 演示模式也能跑通闭环
 
 ## 参考
 - 详细排错表见 `references/deploy-guide.md`。
