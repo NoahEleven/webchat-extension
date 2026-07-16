@@ -28,17 +28,18 @@ export const LAUNCHER_VBS = [
   "' Runs launcher.mjs hidden (no console window)",
   "On Error Resume Next",
   "Set fso = CreateObject(\"Scripting.FileSystemObject\")",
+  "Set sh = CreateObject(\"WScript.Shell\")",
   "scriptPath = WScript.ScriptFullName",
   "backendDir = fso.GetParentFolderName(scriptPath)",
   "",
-  "' Minimal log for debugging (safe ASCII path)",
-  "Set logFile = fso.OpenTextFile(\"C:\\tmp\\webchat_vbs.log\", 8, True)",
+  "' Minimal log for debugging (use %TEMP%, always exists across machines)",
+  "logPath = sh.ExpandEnvironmentStrings(\"%TEMP%\") & \"\\webchat_vbs.log\"",
+  "Set logFile = fso.OpenTextFile(logPath, 8, True)",
   "logFile.WriteLine Now & \" START backendDir=\" & backendDir",
   "logFile.Close",
   "",
   "' Resolve node: try PATH first, then managed path fallback",
   "nodeExe = \"\"",
-  "Set sh = CreateObject(\"WScript.Shell\")",
   "Set oExec = sh.Exec(\"cmd /c where node 2>nul\")",
   "Do While oExec.Status = 0",
   "  WScript.Sleep 30",
@@ -46,7 +47,7 @@ export const LAUNCHER_VBS = [
   "out = \"\"",
   "Err.Clear",
   "out = oExec.StdOut.ReadAll()",
-  "Set logFile = fso.OpenTextFile(\"C:\\tmp\\webchat_vbs.log\", 8, True)",
+  "Set logFile = fso.OpenTextFile(logPath, 8, True)",
   "logFile.WriteLine Now & \" where_result=\" & Left(out, 200) & \" err=\" & Err.Number",
   "If Err.Number = 0 And Len(out) > 0 Then",
   "  nodeExe = Trim(Split(out, vbCrLf)(0))",
@@ -76,7 +77,7 @@ export const LAUNCHER_VBS = [
   "",
   "sh.Run cmd, 0, False",
   "",
-  "Set logFile = fso.OpenTextFile(\"C:\\tmp\\webchat_vbs.log\", 8, True)",
+  "Set logFile = fso.OpenTextFile(logPath, 8, True)",
   "logFile.WriteLine Now & \" Run returned\"",
   "logFile.Close"
 ].join("\r\n");
@@ -106,8 +107,9 @@ function autoDetectBackendDir() {
 }
 
 // 仅当作为脚本直接运行时执行 CLI（被 deploy.mjs import 时不触发）
-// 注意：process.argv[1] 可能是相对路径，需解析成 file URL 再比较
-if (import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+// 注意：process.argv[1] 可能是相对路径，需解析成 file URL 再比较；
+// 用 -e / 动态 import 等场景下 argv[1] 可能为 undefined，需先判空避免 resolve 抛错。
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const args = process.argv.slice(2);
   const force = args.includes("--force");
   const dirArg = args.find((a) => !a.startsWith("--"));
