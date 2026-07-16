@@ -133,7 +133,7 @@ for (const tool of ["pack.mjs", "gen-icons.mjs"]) {
 const envPath = join(target, "backend", ".env");
 const envExample = join(target, "backend", ".env.example");
 if (!fs.existsSync(envPath) && fs.existsSync(envExample)) {
-  console.log("\n⚠️ 后端还没配置 .env，请复制模板并填写（可选填，不填进演示模式）：");
+  console.log("\n⚠️ 后端还没配置 .env，请复制模板并填写（Key 可选：不填走登录模式真实 AI，需本机 codebuddy 已登录）：");
   console.log(`   cp "${envExample}" "${envPath}"`);
   console.log("   然后视情况设置 CODEBUDDY_API_KEY / CODEBUDDY_MODEL=hy3 / SERVER__PORT=40123");
 }
