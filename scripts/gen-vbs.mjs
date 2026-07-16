@@ -70,7 +70,7 @@ export const LAUNCHER_VBS = [
   "url = \"\"",
   "If WScript.Arguments.Count > 0 Then url = WScript.Arguments(0)",
   "",
-  "cmd = \"\"\"\" & nodeExe & \"\"\" \"\"\" & backendDir & \"\\launcher.mjs\"\"\" \"\"\" & url & \"\"\"\"",
+  "cmd = \"\"\"\" & nodeExe & \"\"\"\" & \" \" & \"\"\"\" & backendDir & \"\\launcher.mjs\" & \"\"\"\" & \" \" & \"\"\"\" & url & \"\"\"\"",
   "logFile.WriteLine Now & \" RUN cmd=\" & cmd",
   "logFile.Close",
   "",
@@ -78,7 +78,7 @@ export const LAUNCHER_VBS = [
   "",
   "Set logFile = fso.OpenTextFile(\"C:\\tmp\\webchat_vbs.log\", 8, True)",
   "logFile.WriteLine Now & \" Run returned\"",
-  "logFile.Close",
+  "logFile.Close"
 ].join("\r\n");
 
 // 写出 launcher.vbs 到 backendDir。返回写出路径；未写出（非 Windows 且未 --force）返回 null。
