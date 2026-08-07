@@ -46,7 +46,7 @@ webchat-extension/
 
 ## 部署步骤（agent 照做）
 1. **脚手架**：运行 `node <skill_dir>/scripts/deploy.mjs <targetDir>`（不加 `[targetDir]` 默认 `./webchat-extension` 或 `~/webchat-extension`）。脚本把 `assets/` 里的扩展、后端、根文档复制到目标目录并 `npm install`；**在 Windows 上，agent 会自动用 `scripts/gen-vbs.mjs` 生成 `backend/launcher.vbs`（即使带 `--no-protocol` 也会生成），并自动注册 `webchat://start` 协议**，使面板「🚀 启动后端」按钮免终端生效。`launcher.vbs` 是部署期产物，**绝不随分享包分发/上传**——若目标目录缺失它，可随时补：`node <skill_dir>/scripts/gen-vbs.mjs <target>/backend`。加 `--no-install` 只复制不装依赖；加 `--no-protocol` 跳过协议注册（但 vbs 仍会生成）。非 Windows 或需手动注册时，按 README「四、一键启动后端」用面板「📋 复制启动命令」手动 `npm start`，或参考 README/references 手动 `reg add` 注册协议。
-2. **配置后端**：在 `<target>/backend/` 复制 `.env.example` 为 `.env`，按需填 `CODEBUDDY_API_KEY`（**不填也能跑：复用本机 `codebuddy` CLI 已登录凭据走登录模式真实 AI**；只有显式设 `WEBCHAT_DEMO=1` 才进演示模式）。确认 `CODEBUDDY_MODEL=hy3`（该账户不支持 `claude-sonnet-4`）。
+2. **配置后端**：在 `<target>/backend/` 复制 `.env.example` 为 `.env`，按需填 `CODEBUDDY_API_KEY`（**不填也能跑：复用本机 `codebuddy` CLI 已登录凭据走登录模式真实 AI**；只有显式设 `WEBCHAT_DEMO=1` 才进演示模式）。确认 `CODEBUDDY_MODEL=deepseek-v4-flash`（默认，该账户不支持 `claude-sonnet-4`）。
 3. **启动后端（后台运行）**：`cd <target>/backend && npm start`。监听 `http://localhost:3000`。改代码后重启才生效。也可用面板「🚀 启动后端」按钮（需协议已注册）。
 4. **加载扩展**：浏览器（Chrome / Edge / 千问 / 夸克 等 Chromium 内核）进入**开发者模式 → 加载已解压的扩展程序**，目录选 `<target>/extension/`。（`deploy` 已自动生成 `extension/icons` 四张图标；若手动加载项目根 `extension/`，请先跑 `node gen-icons.mjs`）改了扩展代码要回扩展管理页点「重新加载」。
 5. **验证**：访问 `http://localhost:3000/api/health` 应返回 `{"status":"ok",...}`；打开任意网页 → 点工具栏「🦐 小虾」图标 → 弹出面板 → 选中网页文字点「➕ 添加选中文本」→ 提问 → 流式回答。
@@ -71,7 +71,7 @@ node pack.mjs         # 在父目录生成 webchat-extension-share-YYYYMMDD.zip
 
 ## 关键坑（务必先读，否则部署必踩）
 - **端口冲突导致一直转圈**：官方 CLI 启动会起 prewarm 本地 server，端口由 `SERVER__PORT` 控制。若该端口被本机其他程序（**WorkBuddy 桌面应用**）占用，CLI 会 `EADDRINUSE` 卡死。解决：`.env` 设 `SERVER__PORT=40123`（空闲端口）并重启。**面板「🚀 启动后端」按钮路径**下，`launcher.mjs` 会自动从 `.env` 读取 `SERVER__PORT` 并**显式注入**子进程环境，覆盖本机可能存在的系统级 `SERVER__PORT`（dotenv 不覆盖已存在变量，故必须靠 launcher 注入）；未设置时则不注入、由 `server.js` 自动分配空闲端口。若走 `npm start` 手动启动且系统变量残留旧值，用 `SERVER__PORT=40123 npm start` 显式覆盖。
-- **模型名 400**：本账户不支持 `claude-sonnet-4`。用 `hy3` 或 `auto`。
+- **模型名 400**：本账户不支持 `claude-sonnet-4`。用 `deepseek-v4-flash`（默认）、`hy3` 或 `auto`。
 - **CLI 路径**：`server.js` 通过 `resolveCli()` 自动定位官方 CLI（优先级：显式 `CODEBUDDY_CLI_PATH` → PATH 上的 `codebuddy` → 受管 node 目录固定路径）。不要用 WorkBuddy 自带的那份 cli（协议不匹配会 initialize 超时）。
 - **演示 vs 真实**：未填 `CODEBUDDY_API_KEY` 时后端走「登录模式」复用 codebuddy CLI 已登录凭据，是**真实 AI**（不是模拟回复）；只有显式设 `WEBCHAT_DEMO=1` 才进演示模式（模拟回复用来验收交互闭环）。填了 Key 则走 Key 模式，也是真实 AI。
 - **扩展不注入系统页**：`chrome://`、`edge://` 等页面扩展无法注入，点图标无反应属正常。
