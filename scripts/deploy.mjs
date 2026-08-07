@@ -135,7 +135,7 @@ const envExample = join(target, "backend", ".env.example");
 if (!fs.existsSync(envPath) && fs.existsSync(envExample)) {
   console.log("\n⚠️ 后端还没配置 .env，请复制模板并填写（Key 可选：不填走登录模式真实 AI，需本机 codebuddy 已登录）：");
   console.log(`   cp "${envExample}" "${envPath}"`);
-  console.log("   然后视情况设置 CODEBUDDY_API_KEY / CODEBUDDY_MODEL=hy3 / SERVER__PORT=40123");
+  console.log("   然后视情况设置 CODEBUDDY_API_KEY / CODEBUDDY_MODEL=deepseek-v4-flash / SERVER__PORT=40123");
 }
 
 // ---------- Windows：注册 webchat:// 协议（使面板「🚀 启动后端」按钮免终端生效） ----------
