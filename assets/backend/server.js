@@ -181,7 +181,7 @@ const FORCE_DEMO = process.env.WEBCHAT_DEMO === "1";
 //  - login：未配 Key → 复用本机 codebuddy CLI 已登录凭据（零配置，与你在终端/WorkBuddy 登录的是同一套）
 //  演示模式仅在显式 WEBCHAT_DEMO=1 时触发；否则只要能登录/有 Key 就走真实模型。
 const AUTH_MODE = API_KEY ? "key" : "login";
-const MODEL = process.env.CODEBUDDY_MODEL || "hy3";
+const MODEL = process.env.CODEBUDDY_MODEL || "deepseek-v4-flash";
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "*";
 // 托管模式：由扩展(webchat:// 协议)拉起时为 1。此时后端生命周期交给「扩展心跳」——
 // 浏览器开着→扩展持续 ping 心跳→后端存活；浏览器关→扩展服务线程回收→心跳断→后端自退。
