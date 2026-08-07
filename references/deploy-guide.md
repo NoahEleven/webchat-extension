@@ -39,7 +39,7 @@
 | 收到的是演示（模拟）回复 | 说明设了 `WEBCHAT_DEMO=1`。删掉它重启即走登录模式真实 AI；登录态失效则终端跑一次 `codebuddy` 重登，或 `.env` 填 `CODEBUDDY_API_KEY` 走 Key 模式 |
 | `/api/health` 返回 `demo:true` | 说明设了 `WEBCHAT_DEMO=1`（演示模式）；移除该变量走默认登录模式真实 AI，或填 Key |
 | **真实模式一直转圈、面板无回答**（后端日志 `EADDRINUSE` / CLI 卡死） | 官方 CLI 的 prewarm 端口与 WorkBuddy 桌面应用撞车。在 `.env` 设 `SERVER__PORT=40123`（或空闲端口）并重启；若环境变量残留旧 `SERVER__PORT`，启动时用 `SERVER__PORT=40123 npm start` 显式覆盖 |
-| 后端报 `400 model [...] service info not found` | 模型名不对，把 `CODEBUDDY_MODEL` 改成 `hy3` 或 `auto`（本账户不支持 `claude-sonnet-4`） |
+| 后端报 `400 model [...] service info not found` | 模型名不对，把 `CODEBUDDY_MODEL` 改成 `deepseek-v4-flash`、`hy3` 或 `auto`（本账户不支持 `claude-sonnet-4`） |
 | 后端报 `initialize` 超时 / 永远 0 字节 | 用了 WorkBuddy 自带那份 cli（协议不匹配）。必须用官方 `@tencent-ai/codebuddy-code`；`server.js` 的 `resolveCli()` 已自动定位，必要时用 `CODEBUDDY_CLI_PATH` 显式指定 |
 | 拖拽抖动 / 跳左上角 | 扩展 V1.5.2 已修复拖拽坐标公式；若仍异常，扩展管理页「重新加载」并确认 manifest 版本 ≥ 1.5.2 |
 | **Windows 上每次对话 / 启动后端弹黑框** | SDK 内部 spawn CLI 默认 `windowsHide:false`。`package.json` 的 `postinstall` 会自动跑 `patch-sdk.mjs` 给 `@tencent-ai/agent-sdk` 的 `process-transport.js` 两处 spawn 注入 `windowsHide:true`；`npm install` 后即生效。若依赖是手动装、跳过了 postinstall，运行一次 `node backend/patch-sdk.mjs` 即可 |
