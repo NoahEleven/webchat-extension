@@ -148,7 +148,7 @@ npm start                   # 默认监听 http://localhost:3000
 - **跨域**：后端已开 `CORS *`，开发期够用。上线公网需改具体来源并部署后端。
 - **side_panel**：本方案用「网页内注入浮层（iframe）」而非浏览器侧边栏，兼容性最好。
 - **API Key 安全**：Key 只放后端 `.env`，**绝不进前端**。
-- **真实 AI 能力**：来自 CodeBuddy Agent SDK，模型默认 `hy3`，可在 `.env` 用 `CODEBUDDY_MODEL=` 改（`auto`/`hy3`/`glm-5.2`/`kimi-k2.x`/`deepseek-v4-*` 等，本账户不支持 `claude-sonnet-4`）。
+- **真实 AI 能力**：来自 CodeBuddy Agent SDK，模型默认 `deepseek-v4-flash`，可在 `.env` 用 `CODEBUDDY_MODEL=` 改（`auto`/`hy3`/`glm-5.2`/`kimi-k2.x`/`deepseek-v4-*` 等，本账户不支持 `claude-sonnet-4`）。
 
 ---
 
@@ -163,5 +163,5 @@ npm start                   # 默认监听 http://localhost:3000
 | 收到的是演示（模拟）回复而非真实 AI | 说明设了 `WEBCHAT_DEMO=1`。删掉该变量重启即走登录模式真实 AI；若登录态失效，终端跑一次 `codebuddy` 重新登录，或在 `.env` 填 `CODEBUDDY_API_KEY` 走 Key 模式 |
 | `/api/health` 返回 `demo:true` | 说明设了 `WEBCHAT_DEMO=1`（演示模式）。想要真实 AI 请移除该变量（默认登录模式）或填 Key |
 | **真实模式一直转圈、无回答**（后端日志 `EADDRINUSE` / CLI 卡死） | 官方 CLI 的 prewarm 端口和本机 WorkBuddy 桌面应用撞车。在 `.env` 设 `SERVER__PORT=40123`（或空闲端口）并重启；若环境变量残留旧 `SERVER__PORT`，启动时用 `SERVER__PORT=40123 npm start` 显式覆盖 |
-| 后端报 `400 model [...] service info not found` | 模型名不对，把 `CODEBUDDY_MODEL` 改成 `hy3` 或 `auto` |
+| 后端报 `400 model [...] service info not found` | 模型名不对，把 `CODEBUDDY_MODEL` 改成 `deepseek-v4-flash`、`hy3` 或 `auto` |
 | **Windows 上每次对话 / 启动后端都弹黑框** | SDK 内部 spawn CLI 默认 `windowsHide:false`。后端 `package.json` 已加 `postinstall` 自动跑 `patch-sdk.mjs` 给 SDK 注入 `windowsHide:true`；`npm install` 后自然生效。若重装后仍弹，手动跑一次 `node backend/patch-sdk.mjs` |
